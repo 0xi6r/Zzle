@@ -42,6 +42,9 @@
   .slot.sel { outline:2px solid #fff; outline-offset:1px; } .slot.act { box-shadow:0 0 0 3px #ff4d4d; }
   #status { height:20px; color:#999; } #status.ok { color:#6fdc8c; } #status.bad { color:#ff8a80; }
   #tools { display:flex; gap:10px; }
+  #timer.on { border-color:var(--c1); color:#9ff3e8; font-variant-numeric:tabular-nums; min-width:96px; }
+  #progress { font-size:13px; color:#999; font-variant-numeric:tabular-nums; } #progress b { color:#ddd; font-weight:500; }
+  #progress[hidden] { display:none; }
   .pulse { animation:pulse 1.2s infinite; border-color:#ffb02e!important; }
   @keyframes pulse { 50% { box-shadow:0 0 0 5px rgba(255,176,46,.35); } }
   #modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; }
@@ -54,7 +57,8 @@
 </head>
 <body>
 <div id="app">
-  <div id="tools"><button id="howto" class="nav">? How to play</button><button id="help" class="nav">💡 Hint</button></div>
+  <div id="tools"><button id="howto" class="nav">? How to play</button><button id="help" class="nav">💡 Hint</button><button id="timer" class="nav" title="Time each level and track your best times">⏱ Timer</button></div>
+  <div id="progress" hidden></div>
   <header><button id="prev" class="nav" title="Previous level">‹</button><h1 id="title"></h1><button id="skip" class="nav" title="Skip to next level">Skip ›</button></header>
   <div id="dots"></div>
   <div id="stage">

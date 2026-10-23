@@ -12,10 +12,21 @@ const SPEEDS = [420, 170, 45];
 let li = 0, prog: Slot[][] = [], sel: [number, number] = [0, 0], sim: Sim, timer = 0, speed = 1;
 let solved = new Set<number>();
 let fails = 0;
+// timer: when on, each level is clocked from load until solved; best times are kept per level
+let timing = false, best: Record<number, number> = {}, t0 = 0, tEnd: number | null = null;
 try {
   solved = new Set(JSON.parse(localStorage.getItem('zzle-solved') || '[]'));
   li = +(localStorage.getItem('zzle-level') || 0);
+  timing = localStorage.getItem('zzle-timer') === '1';
+  best = JSON.parse(localStorage.getItem('zzle-times') || '{}');
 } catch {}
+
+const fmt = (ms: number) => {
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+    : `${m}:${String(s % 60).padStart(2, '0')}`;
+};
+const elapsed = () => (tEnd ?? performance.now()) - t0;
 
 const icon = (a: string) =>
   a === 'u' ? '↑' : a === 'l' ? '↶' : a === 'r' ? '↷' : a[0] === 'c' ? a[1]
@@ -93,12 +104,29 @@ function buildDots() {
   levels.forEach((_, i) => {
     const b = document.createElement('button');
     b.className = 'dot' + (solved.has(i) ? ' done' : '') + (i === li ? ' cur' : '');
-    b.textContent = String(i + 1); b.title = levels[i].name; b.onclick = () => load(i);
+    b.textContent = String(i + 1); b.title = levels[i].name + (best[i] != null ? ` · best ${fmt(best[i])}` : ''); b.onclick = () => load(i);
     box.append(b);
   });
   $<HTMLButtonElement>('prev').disabled = li === 0;
   $<HTMLButtonElement>('skip').disabled = li === levels.length - 1;
 }
+
+// ---------- timer ----------
+function drawTimer() {
+  const b = $('timer');
+  b.classList.toggle('on', timing);
+  b.textContent = timing ? `⏱ ${fmt(elapsed())}` : '⏱ Timer';
+  b.title = timing ? 'Timer on — click to turn off' : 'Time each level and track your best times';
+}
+function drawProgress() {
+  const p = $('progress'); p.hidden = !timing;
+  if (!timing) return;
+  const timed = Object.values(best), total = timed.reduce((a, b) => a + b, 0);
+  p.innerHTML = `Solved <b>${solved.size}/${levels.length}</b> · timed <b>${timed.length}</b> · total best <b>${fmt(total)}</b>`
+    + (best[li] != null ? ` · this level best <b>${fmt(best[li])}</b>` : '');
+}
+function restartClock() { t0 = performance.now(); tEnd = null; drawTimer(); }
+setInterval(() => { if (timing && tEnd === null) drawTimer(); }, 250);
 
 const HOWTO = `<h2>How to play</h2>
 <p><b>Goal:</b> collect every ★ with the robot. If it steps off the colored path, it falls.</p>
@@ -110,6 +138,7 @@ const HOWTO = `<h2>How to play</h2>
 <li><b>Colored squares</b> are conditions: with the slot selected, click one so the command only runs when the robot stands on that color. Click again to remove it.</li>
 </ul>
 <p><b>Controls:</b> ▶ run/pause · › single step · ↻ restart · ✕ clear program · ×1 speed. Keys: arrows move the selection, Backspace clears a slot, Enter runs.</p>
+<p><b>Timer:</b> click ⏱ Timer to clock each level from when it opens until it's solved. Your best time per level is saved and the line below the buttons shows your overall progress.</p>
 <p><b>Tips:</b> tile colors can tell the robot where to turn. Painting lets a tile behave differently the second time you reach it. Stuck? Use <b>Hint</b>.</p>`;
 function showModal(html: string) { $('mbody').innerHTML = html; $('modal').hidden = false; }
 const closeModal = () => { $('modal').hidden = true; };
@@ -133,6 +162,7 @@ function clearSlot() { prog[sel[0]][sel[1]] = null; edited(); }
 
 function edited() { // any change restarts the simulation
   stop();
+  if (tEnd !== null) restartClock(); // replaying a solved level starts a fresh attempt
   sim = newSim(levels[li]);
   $('ov').hidden = true;
   setStatus('Pick a slot, then a command. Press ▶ to run.');
@@ -146,6 +176,7 @@ function load(i: number) {
   sel = [0, 0]; fails = 0; $('help').classList.remove('pulse');
   $('title').textContent = `Level ${li + 1} · ${d.name}`;
   try { localStorage.setItem('zzle-level', String(li)); } catch {}
+  restartClock(); drawProgress();
   buildPalette(); buildDots(); edited();
 }
 
@@ -164,9 +195,20 @@ function finish() {
   if (sim.status === 'won') {
     solved.add(li);
     try { localStorage.setItem('zzle-solved', JSON.stringify([...solved])); } catch {}
+    let timeLine = '';
+    if (timing && tEnd === null) {
+      tEnd = performance.now();
+      const t = elapsed(), prev = best[li], record = prev == null || t < prev;
+      if (record) {
+        best[li] = t;
+        try { localStorage.setItem('zzle-times', JSON.stringify(best)); } catch {}
+      }
+      timeLine = `<div style="font-size:16px">⏱ ${fmt(t)}${record ? (prev == null ? '' : ' · new best!') : ` · best ${fmt(prev!)}`}</div>`;
+      drawTimer(); drawProgress();
+    }
     buildDots(); setStatus(`Solved in ${sim.steps} steps!`, 'ok');
     const last = li === levels.length - 1, ov = $('ov');
-    ov.innerHTML = `<div>${last ? '🎉 All levels solved!' : '★ Level complete'}</div><div>
+    ov.innerHTML = `<div>${last ? '🎉 All levels solved!' : '★ Level complete'}</div>${timeLine}<div>
       <button class="alt" id="again">Replay</button> ${last ? '' : '<button id="nextlvl">Next level ›</button>'}</div>`;
     ov.hidden = false;
     $('again').onclick = () => edited();
@@ -191,6 +233,11 @@ $('speed').onclick = () => { speed = (speed + 1) % 3; $('speed').textContent = `
 $('prev').onclick = () => load(li - 1);
 $('skip').onclick = () => load(li + 1);
 
+$('timer').onclick = () => {
+  timing = !timing;
+  try { localStorage.setItem('zzle-timer', timing ? '1' : '0'); } catch {}
+  restartClock(); drawProgress();
+};
 $('howto').onclick = () => showModal(HOWTO);
 $('help').onclick = () => {
   $('help').classList.remove('pulse');

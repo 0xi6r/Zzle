@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zzle</title>
+<style>
+  :root { --c0:#6c3df0; --c1:#1fb8a8; --c2:#ffb02e; --bg:#161616; --panel:#232323; --line:#3a3a3a; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:#ddd; font:15px 'Segoe UI',system-ui,sans-serif;
+         display:flex; justify-content:center; user-select:none; }
+  #app { padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px; max-width:760px; }
+  header { display:flex; align-items:center; gap:14px; }
+  h1 { margin:0; font-size:16px; font-weight:500; color:#aaa; min-width:230px; text-align:center; }
+  button { font:inherit; color:#ddd; cursor:pointer; }
+  .nav { background:none; border:1px solid var(--line); border-radius:6px; padding:5px 12px; }
+  .nav:hover:not(:disabled) { background:#2c2c2c; } .nav:disabled { opacity:.3; cursor:default; }
+  #dots { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:700px; }
+  .dot { width:22px; height:22px; border-radius:50%; border:1px solid var(--line); background:none; font-size:11px; padding:0; color:#888; }
+  .dot.done { background:#2d5a3a; color:#cfe; } .dot.cur { border-color:#fff; color:#fff; }
+  #stage { display:flex; gap:14px; align-items:flex-start; }
+  #boardwrap { position:relative; }
+  canvas { background:#1f1f1f; border-radius:6px; max-width:100%; height:auto; display:block; }
+  #side { display:flex; flex-direction:column; gap:10px; }
+  #side button { width:42px; height:42px; background:none; border:none; font-size:22px; color:#eee; border-radius:6px; }
+  #side button:hover { background:#2c2c2c; }
+  #ov { position:absolute; inset:0; background:rgba(0,0,0,.62); border-radius:6px; display:flex; flex-direction:column;
+        align-items:center; justify-content:center; gap:14px; font-size:22px; }
+  #ov[hidden] { display:none; }
+  #ov button { background:var(--c1); border:none; color:#04201c; font-weight:600; padding:9px 20px; border-radius:6px; }
+  #ov button.alt { background:#444; color:#ddd; }
+  #pal, #calls { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; min-height:44px; }
+  .btn { width:44px; height:44px; background:var(--panel); border:1px solid var(--line); border-radius:5px; font-size:22px; }
+  .btn:hover { background:#2f2f2f; }
+  .k0 { background:var(--c0)!important; } .k2 { background:var(--c2)!important; }
+  .k1 { background:repeating-linear-gradient(135deg,var(--c1) 0 5px,#118a7d 5px 7px)!important; }
+  #funcs { display:flex; flex-direction:column; gap:8px; }
+  .frow { display:flex; gap:5px; align-items:center; }
+  .lab { width:26px; font-size:22px; text-align:center; color:#ccc; }
+  .slot { width:44px; height:44px; background:var(--panel); border:1px solid var(--line); border-radius:4px; display:flex;
+          align-items:center; justify-content:center; font-size:22px; cursor:pointer; text-shadow:0 0 3px #000; }
+  .slot.sel { outline:2px solid #fff; outline-offset:1px; } .slot.act { box-shadow:0 0 0 3px #ff4d4d; }
+  #status { height:20px; color:#999; } #status.ok { color:#6fdc8c; } #status.bad { color:#ff8a80; }
+  #tools { display:flex; gap:10px; }
+  .pulse { animation:pulse 1.2s infinite; border-color:#ffb02e!important; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 5px rgba(255,176,46,.35); } }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  #modal[hidden] { display:none; }
+  #card { position:relative; background:#242424; border:1px solid var(--line); border-radius:10px; padding:20px 24px; max-width:520px; max-height:90vh; overflow:auto; line-height:1.5; user-select:text; }
+  #card h2 { margin:0 0 10px; font-size:18px; } #card p { margin:8px 0; } #card ul { padding-left:20px; margin:8px 0; }
+  #mclose { position:absolute; top:10px; right:10px; padding:2px 9px; }
+  .dim { color:#999; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="tools"><button id="howto" class="nav">? How to play</button><button id="help" class="nav">💡 Hint</button></div>
+  <header><button id="prev" class="nav" title="Previous level">‹</button><h1 id="title"></h1><button id="skip" class="nav" title="Skip to next level">Skip ›</button></header>
+  <div id="dots"></div>
+  <div id="stage">
+    <div id="boardwrap"><canvas id="cv" width="640" height="480"></canvas><div id="ov" hidden></div></div>
+    <nav id="side">
+      <button id="run" title="Run / pause (Enter)">▶</button>
+      <button id="step" title="Single step">›</button>
+      <button id="reset" title="Restart level">↻</button>
+      <button id="clear" title="Clear program">✕</button>
+      <button id="speed" title="Speed" style="font-size:14px">×1</button>
+    </nav>
+  </div>
+  <div id="pal"></div>
+  <div id="calls"></div>
+  <div id="funcs"></div>
+  <div id="status"></div>
+</div>
+<div id="modal" hidden><div id="card"><button id="mclose" class="nav" title="Close">✕</button><div id="mbody"></div></div></div>
+<script type="module" src="game.ts"></script>
+</body>
+</html>

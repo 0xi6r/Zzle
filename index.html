@@ -53,17 +53,44 @@
   #card h2 { margin:0 0 10px; font-size:18px; } #card p { margin:8px 0; } #card ul { padding-left:20px; margin:8px 0; }
   #mclose { position:absolute; top:10px; right:10px; padding:2px 9px; }
   .dim { color:#999; }
+  #modes { display:flex; gap:4px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:3px; }
+  #modes button { background:none; border:none; padding:6px 14px; border-radius:6px; color:#aaa; }
+  #modes button.cur { background:#3a3a3a; color:#fff; }
+  .mem-only, #mem { display:none; }
+  body.memory .mem-only { display:flex; } body.memory #mem { display:grid; }
+  body.memory .robot-only, body.memory canvas { display:none!important; }
+  #mem { --n:5; grid-template-columns:repeat(var(--n),1fr); gap:6px; width:min(92vw,440px); aspect-ratio:1; padding:10px;
+         background:#1f1f1f; border-radius:10px; }
+  .mc { border:none; border-radius:8px; background:#2b2b2b; padding:0; transition:background .15s, transform .1s; cursor:default; }
+  #mem.live .mc { cursor:pointer; } #mem.live .mc:hover { background:#363636; } #mem.live .mc:active { transform:scale(.94); }
+  .mc.on { background:#2f7bff; box-shadow:0 0 12px rgba(47,123,255,.6); }
+  .mc.pick, #mem.live .mc.pick:hover { background:var(--c1); }
+  .mc.hit, .lg .hit { background:#3fbf6a; } .mc.wrong, .lg .wrong { background:#e05555; }
+  .mc.miss, .lg .miss { background:transparent; box-shadow:inset 0 0 0 3px #ffb02e; }
+  #mphases { gap:8px; align-items:center; font-size:13px; color:#666; }
+  #mphases span { padding:4px 10px; border-radius:12px; border:1px solid var(--line); }
+  #mphases .past { color:#aaa; } #mphases .cur { color:#fff; border-color:#fff; }
+  #mphases .cur.ok { border-color:#3fbf6a; color:#8fe8aa; } #mphases .cur.bad { border-color:#e05555; color:#ff9a9a; }
+  #mbarw { width:min(92vw,440px); height:4px; background:#2b2b2b; border-radius:2px; overflow:hidden; }
+  #mbar { height:100%; width:0; background:#2f7bff; }
+  #mact { gap:10px; min-height:34px; } #mact .go { border-color:var(--c1); color:#9ff3e8; }
+  .ovsub { font-size:14px; color:#bbb; text-align:center; padding:0 16px; } .ovrow { display:flex; gap:10px; }
+  .lg { margin-left:10px; font-size:12px; color:#999; } .lg i { display:inline-block; width:10px; height:10px; border-radius:2px; margin:0 3px 0 8px; }
+  #status .ok { color:#6fdc8c; } #status .bad { color:#ff8a80; }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="tools"><button id="howto" class="nav">? How to play</button><button id="help" class="nav">💡 Hint</button><button id="timer" class="nav" title="Time each level and track your best times">⏱ Timer</button></div>
+  <div id="modes"><button data-m="robot">🤖 Robot</button><button data-m="memory">🧠 Memory</button></div>
+  <div id="tools" class="robot-only"><button id="howto" class="nav">? How to play</button><button id="help" class="nav">💡 Hint</button><button id="timer" class="nav" title="Time each level and track your best times">⏱ Timer</button></div>
+  <div id="mphases" class="mem-only"><span data-p="memo">Memorize</span>→<span data-p="recall">Recall</span>→<span data-p="result">Result</span></div>
+  <div id="mbarw" class="mem-only"><div id="mbar"></div></div>
   <div id="progress" hidden></div>
   <header><button id="prev" class="nav" title="Previous level">‹</button><h1 id="title"></h1><button id="skip" class="nav" title="Skip to next level">Skip ›</button></header>
   <div id="dots"></div>
   <div id="stage">
-    <div id="boardwrap"><canvas id="cv" width="640" height="480"></canvas><div id="ov" hidden></div></div>
-    <nav id="side">
+    <div id="boardwrap"><canvas id="cv" width="640" height="480"></canvas><div id="mem"></div><div id="ov" hidden></div></div>
+    <nav id="side" class="robot-only">
       <button id="run" title="Run / pause (Enter)">▶</button>
       <button id="step" title="Single step">›</button>
       <button id="reset" title="Restart level">↻</button>
@@ -71,9 +98,10 @@
       <button id="speed" title="Speed" style="font-size:14px">×1</button>
     </nav>
   </div>
-  <div id="pal"></div>
-  <div id="calls"></div>
-  <div id="funcs"></div>
+  <div id="pal" class="robot-only"></div>
+  <div id="calls" class="robot-only"></div>
+  <div id="funcs" class="robot-only"></div>
+  <div id="mact" class="mem-only"></div>
   <div id="status"></div>
 </div>
 <div id="modal" hidden><div id="card"><button id="mclose" class="nav" title="Close">✕</button><div id="mbody"></div></div></div>

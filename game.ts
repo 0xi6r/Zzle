@@ -2,6 +2,7 @@
 import { levels } from './levels';
 import { Slot, Sim, newSim, step, parseProg } from './engine';
 import { hints } from './hints';
+import { memory } from './memory';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const cv = $<HTMLCanvasElement>('cv'), g = cv.getContext('2d')!;
@@ -230,8 +231,22 @@ $('step').onclick = () => { stop(); if (over()) edited(); advance(); };
 $('reset').onclick = () => edited();
 $('clear').onclick = () => { prog = levels[li].f.map(n => Array(n).fill(null)); sel = [0, 0]; edited(); };
 $('speed').onclick = () => { speed = (speed + 1) % 3; $('speed').textContent = `×${speed + 1}`; };
-$('prev').onclick = () => load(li - 1);
-$('skip').onclick = () => load(li + 1);
+$('prev').onclick = () => mode === 'memory' ? memory.go(-1) : load(li - 1);
+$('skip').onclick = () => mode === 'memory' ? memory.go(1) : load(li + 1);
+
+// ---------- modes ----------
+// The robot puzzles and the memory game share the header, level dots, board overlay and status line.
+let mode: 'robot' | 'memory' = 'robot';
+try { if (localStorage.getItem('zzle-mode') === 'memory') mode = 'memory'; } catch {}
+function setMode(m: typeof mode) {
+  mode = m;
+  try { localStorage.setItem('zzle-mode', m); } catch {}
+  document.body.classList.toggle('memory', m === 'memory');
+  document.querySelectorAll<HTMLElement>('#modes [data-m]').forEach(b => b.classList.toggle('cur', b.dataset.m === m));
+  if (m === 'memory') { stop(); closeModal(); memory.enter(); }
+  else { memory.exit(); $('title').textContent = `Level ${li + 1} · ${levels[li].name}`; buildDots(); edited(); }
+}
+document.querySelectorAll<HTMLElement>('#modes [data-m]').forEach(b => { b.onclick = () => { if (b.dataset.m !== mode) setMode(b.dataset.m as typeof mode); }; });
 
 $('timer').onclick = () => {
   timing = !timing;
@@ -250,6 +265,7 @@ $('modal').onclick = e => { if (e.target === $('modal')) closeModal(); };
 
 addEventListener('keydown', e => {
   if (!$('modal').hidden) { if (e.key === 'Escape') closeModal(); return; }
+  if (mode === 'memory') return memory.key(e);
   const [f, i] = sel;
   if (e.key === 'Backspace' || e.key === 'Delete') { clearSlot(); e.preventDefault(); }
   else if (e.key === 'Enter') $('run').click();
@@ -260,3 +276,4 @@ addEventListener('keydown', e => {
 });
 
 load(li);
+setMode(mode);

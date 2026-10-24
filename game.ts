@@ -1,3 +1,4 @@
+// zzle and memory 
 // game.ts — UI, rendering and input. Rules live in engine.ts, levels in levels.ts.
 import { levels } from './levels';
 import { Slot, Sim, newSim, step, parseProg } from './engine';
